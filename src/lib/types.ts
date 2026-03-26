@@ -1,55 +1,71 @@
 /**
- * TypeScript 类型定义
- * 定义所有 API 响应和组件 Props 的类型
+ * TypeScript 类型定义 - 扩展后台所需类型
+ * 与后端 API 返回格式对齐
  */
 
-// ========== 情绪色彩类型 ==========
-export type EmotionType = 'relaxed' | 'calm' | 'focused' | 'stressed';
+// ========== 基础实体类型 ==========
 
-export interface EmotionColor {
-  primary: string;
-  gradient: string;
-  glow: string;
-  label: string;
-}
-
-// ========== 用户类型 ==========
+// 用户
 export interface User {
   id: string;
+  tenant_id: string;
   name: string;
   gender: 'male' | 'female' | 'other';
   age: number;
   height: number;
   weight: number;
   bmi: number;
+  tags?: string[];
+  created_at: string;
+  updated_at: string;
 }
 
-// ========== 设备类型 ==========
+// 设备
 export interface Device {
   id: string;
   code: string;
   name: string;
+  model: string;
+  tenant_id: string;
   status: 'online' | 'offline' | 'measuring';
+  current_user_id?: string;
+  current_user?: User;
+  firmware_version: string;
+  last_online_at?: string;
+  created_at: string;
+  updated_at: string;
 }
 
-// ========== 测量记录类型 ==========
+// 租户
+export interface Tenant {
+  id: string;
+  name: string;
+  contact_name: string;
+  contact_phone: string;
+  address?: string;
+  settings?: Record<string, unknown>;
+  created_at: string;
+}
+
+// 测量记录
 export interface MeasurementRecord {
   id: string;
-  user: User;
+  user_id: string;
+  user?: User;
   device_code: string;
   start_time: string;
   end_time: string;
   duration_minutes: number;
   health_score: number;
-  metrics: MeasurementMetrics;
+  metrics: DerivedMetrics;
   time_series?: TimeSeriesData[];
   ai_analysis?: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   created_at: string;
 }
 
-// ========== 测量指标类型 ==========
-export interface MeasurementMetrics {
+// 派生指标
+export interface DerivedMetrics {
   // 心率
   avg_heart_rate: number;
   max_heart_rate: number;
@@ -94,14 +110,14 @@ export interface MeasurementMetrics {
   risk_items?: RiskItem[];
 }
 
-// ========== 风险项类型 ==========
+// 风险项
 export interface RiskItem {
   level: 'low' | 'medium' | 'high';
   name: string;
   desc: string;
 }
 
-// ========== 时序数据类型 ==========
+// 时序数据
 export interface TimeSeriesData {
   time: string;
   heartRate: number;
@@ -110,7 +126,7 @@ export interface TimeSeriesData {
   parasympathetic?: number;
 }
 
-// ========== 实时数据类型 ==========
+// 实时数据
 export interface RealtimeData {
   device_code: string;
   timestamp: string;
@@ -122,12 +138,146 @@ export interface RealtimeData {
   movement_intensity: number;
 }
 
+// ========== 干预规则类型 ==========
+
+// 条件配置
+export interface ConditionConfig {
+  metric: string;
+  operator: '>' | '<' | '>=' | '<=' | '==' | '!=';
+  value: number;
+}
+
+// 动作配置
+export interface ActionConfig {
+  type: string;
+  params: Record<string, unknown>;
+}
+
+// 干预规则
+export interface InterventionRule {
+  id: string;
+  tenant_id: string;
+  name: string;
+  description?: string;
+  condition_logic: 'AND' | 'OR';
+  conditions: ConditionConfig[];
+  actions: ActionConfig[];
+  is_enabled: boolean;
+  trigger_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// 干预日志
+export interface InterventionLog {
+  id: string;
+  tenant_id: string;
+  rule_id: string;
+  rule_name: string;
+  user_id: string;
+  user?: User;
+  triggered_at: string;
+  trigger_metrics: Record<string, number>;
+  actions_executed: ActionConfig[];
+  status: 'pending' | 'executing' | 'success' | 'failed';
+  error_message?: string;
+  created_at: string;
+}
+
+// 干预效果评估
+export interface InterventionEffect {
+  user_id: string;
+  rule_id?: string;
+  before_avg: Record<string, number>;
+  after_avg: Record<string, number>;
+  improvement: Record<string, number>;
+  timeline: Array<{
+    date: string;
+    metrics: Record<string, number>;
+    interventions: string[];
+  }>;
+}
+
+// ========== 活动类型 ==========
+
+// 活动
+export interface Activity {
+  id: string;
+  tenant_id: string;
+  title: string;
+  type: 'singing_bowl' | 'meditation' | 'yoga' | 'lecture' | 'other';
+  start_time: string;
+  end_time: string;
+  location: string;
+  max_participants: number;
+  target_tags: string[];
+  description?: string;
+  status: 'draft' | 'published' | 'ongoing' | 'completed' | 'cancelled';
+  matched_users?: number;
+  pushed_users?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// 活动推送记录
+export interface ActivityPushRecord {
+  id: string;
+  activity_id: string;
+  user_id: string;
+  user?: User;
+  matched_tags: string[];
+  match_reason: string;
+  push_status: 'pending' | 'sent' | 'failed';
+  pushed_at?: string;
+  created_at: string;
+}
+
+// ========== Dashboard 类型 ==========
+
+// Dashboard 概览
+export interface DashboardOverview {
+  tenant_id: string;
+  today_measurements: number;
+  today_measurements_trend: number;
+  online_devices: number;
+  total_devices: number;
+  anomaly_rate: number;
+  anomaly_rate_trend: number;
+  avg_health_score: number;
+  avg_health_score_trend: number;
+  online_users: number;
+  stress_distribution: {
+    relaxed: number;
+    calm: number;
+    focused: number;
+    stressed: number;
+  };
+  live_members: LiveMember[];
+  hourly_measurements: Array<{ hour: string; count: number }>;
+  daily_trends: Array<{ date: string; stress_avg: number; health_score_avg: number }>;
+}
+
+// 实时会员
+export interface LiveMember {
+  user_id: string;
+  user: User;
+  device_code: string;
+  started_at: string;
+  current_metrics: {
+    stress_index: number;
+    heart_rate: number;
+    breathing_rate: number;
+  };
+  emotion_state: 'relaxed' | 'calm' | 'focused' | 'stressed';
+  has_alert: boolean;
+}
+
 // ========== API 响应类型 ==========
+
 export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
+  code: number;
+  msg: string;
+  data: T;
 }
 
 export interface PaginatedResponse<T> {
@@ -138,110 +288,59 @@ export interface PaginatedResponse<T> {
   pages: number;
 }
 
-// ========== 组件 Props 类型 ==========
-export interface GlassCardProps {
-  children: React.ReactNode;
-  className?: string;
-  emotionColor?: EmotionType;
-  glowIntensity?: 'none' | 'subtle' | 'medium';
-  onClick?: () => void;
+// ========== 可用选项类型 ==========
+
+export interface AvailableMetric {
+  key: string;
+  name: string;
+  unit: string;
+  min: number;
+  max: number;
 }
 
-export interface BreathingOrbProps {
-  size?: number;
-  color?: string;
-  speed?: 'slow' | 'normal' | 'fast';
-  intensity?: number;
-  children?: React.ReactNode;
+export interface AvailableAction {
+  type: string;
+  name: string;
+  params: Array<{
+    key: string;
+    name: string;
+    type: 'select' | 'number' | 'text';
+    options?: Array<{ value: string; label: string }>;
+    min?: number;
+    max?: number;
+    default?: unknown;
+  }>;
 }
 
-export interface EmotionGradientProps {
-  emotionColor: string;
-  animated?: boolean;
-}
+// ========== 情绪类型 ==========
 
-export interface MetricDisplayProps {
-  icon?: React.ReactNode | string;
+export type EmotionType = 'relaxed' | 'calm' | 'focused' | 'stressed';
+
+export interface EmotionColor {
+  primary: string;
+  gradient: string;
+  glow: string;
   label: string;
-  value: number | string;
-  unit?: string;
-  status?: {
-    level: 'good' | 'warning' | 'danger';
-    text: string;
-  };
-  trend?: 'up' | 'down' | 'stable';
-  showBar?: boolean;
-  barValue?: number;
-  barColor?: string;
-}
-
-export interface PulseRingProps {
-  heartRate: number;
-  size?: number;
-  showLabel?: boolean;
-}
-
-// ========== 图表 Props 类型 ==========
-export interface EmotionStarfieldProps {
-  rrIntervals: number[];
-  emotionLabel?: string;
-  height?: number;
-}
-
-export interface VibeTrendAreaProps {
-  timeSeriesData: TimeSeriesData[];
-  height?: number;
-}
-
-export interface HealthScoreRingProps {
-  score: number;
-  label?: string;
-  size?: number;
-  animated?: boolean;
-}
-
-export interface StressGaugeProps {
-  value: number;
-  label?: string;
-}
-
-export interface ConstitutionRadarProps {
-  constitutionScores: Record<string, number>;
-  primaryConstitution: string;
-}
-
-export interface AutonomicSpectrumProps {
-  value: number;
-  showLabels?: boolean;
-}
-
-export interface HeartBreathWaveProps {
-  data: number[];
-  type: 'heartRate' | 'breathing';
-  color?: string;
-  height?: number;
 }
 
 // ========== 表单类型 ==========
-export interface RegisterFormData {
+
+export interface RuleFormData {
   name: string;
-  gender: 'male' | 'female' | 'other';
-  age: number;
-  height: number;
-  weight: number;
+  description?: string;
+  condition_logic: 'AND' | 'OR';
+  conditions: ConditionConfig[];
+  actions: ActionConfig[];
+  is_enabled: boolean;
 }
 
-// ========== 状态管理类型 ==========
-export interface MeasurementState {
-  isMeasuring: boolean;
-  deviceCode: string | null;
-  startTime: Date | null;
-  realtimeData: RealtimeData | null;
-  historyData: TimeSeriesData[];
-  error: string | null;
-}
-
-export interface EmotionThemeState {
-  currentEmotion: EmotionType;
-  setColor: (emotion: EmotionType) => void;
+export interface ActivityFormData {
+  title: string;
+  type: Activity['type'];
+  start_time: string;
+  end_time: string;
+  location: string;
+  max_participants: number;
+  target_tags: string[];
+  description?: string;
 }

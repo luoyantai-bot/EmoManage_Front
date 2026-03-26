@@ -1,19 +1,30 @@
 /**
- * API 请求封装
+ * API 请求封装 - SaaS 后台 API
  * 处理与后端 API 的所有通信
  */
 
-import axios, { AxiosInstance, AxiosError } from 'axios';
-import {
+import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import type {
   ApiResponse,
-  MeasurementRecord,
-  RealtimeData,
-  RegisterFormData,
   PaginatedResponse,
+  User,
+  Device,
+  MeasurementRecord,
+  DashboardOverview,
+  InterventionRule,
+  InterventionLog,
+  InterventionEffect,
+  Activity,
+  ActivityPushRecord,
+  AvailableMetric,
+  AvailableAction,
+  RuleFormData,
+  ActivityFormData,
 } from './types';
 
 // ========== API 配置 ==========
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const TENANT_ID = 'default-tenant'; // 开发阶段写死
 
 // ========== 创建 axios 实例 ==========
 const apiClient: AxiosInstance = axios.create({
@@ -26,207 +37,281 @@ const apiClient: AxiosInstance = axios.create({
 
 // ========== 请求拦截器 ==========
 apiClient.interceptors.request.use(
-  (config) => {
-    // 可以在这里添加 token 等
+  (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // 自动添加 tenant_id
+    if (config.params) {
+      config.params.tenant_id = config.params.tenant_id || TENANT_ID;
+    } else {
+      config.params = { tenant_id: TENANT_ID };
+    }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // ========== 响应拦截器 ==========
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const { code, data, msg } = response.data;
+    if (code === 200) return data;
+    throw new Error(msg || '请求失败');
+  },
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      // 处理未授权
       localStorage.removeItem('token');
     }
-    return Promise.reject(error);
+    throw error;
   }
 );
 
-// ========== 设备 API ==========
+// ========== Dashboard API ==========
+export const dashboardApi = {
+  getOverview: async (): Promise<DashboardOverview> => {
+    return apiClient.get('/dashboard/overview');
+  },
+
+  getTrends: async (days: number = 7): Promise<{
+    daily_trends: Array<{ date: string; stress_avg: number; health_score_avg: number }>;
+  }> => {
+    return apiClient.get('/dashboard/trends', { params: { days } });
+  },
+};
+
+// ========== Device API ==========
 export const deviceApi = {
-  /**
-   * 绑定设备
-   */
-  async bindDevice(deviceCode: string, tenantId: string): Promise<ApiResponse<{ device_id: string }>> {
-    const response = await apiClient.post('/devices/bind', {
-      device_code: deviceCode,
-      tenant_id: tenantId,
-    });
-    return response.data;
+  list: async (params?: {
+    page?: number;
+    page_size?: number;
+    status?: string;
+    search?: string;
+  }): Promise<PaginatedResponse<Device>> => {
+    return apiClient.get('/devices', { params });
   },
 
-  /**
-   * 获取设备信息
-   */
-  async getDevice(deviceCode: string): Promise<ApiResponse<{ device: { code: string; name: string; status: string } }>> {
-    const response = await apiClient.get(`/devices/${deviceCode}`);
-    return response.data;
+  get: async (deviceCode: string): Promise<Device> => {
+    return apiClient.get(`/devices/${deviceCode}`);
   },
 
-  /**
-   * 检查设备是否在线
-   */
-  async checkDeviceStatus(deviceCode: string): Promise<ApiResponse<{ online: boolean }>> {
-    const response = await apiClient.get(`/devices/${deviceCode}/status`);
-    return response.data;
+  sync: async (): Promise<{ synced: number }> => {
+    return apiClient.post('/devices/sync');
+  },
+
+  bind: async (deviceCode: string, userId: string): Promise<{ success: boolean }> => {
+    return apiClient.post('/devices/bind', { device_code: deviceCode, user_id: userId });
+  },
+
+  unbind: async (deviceCode: string): Promise<{ success: boolean }> => {
+    return apiClient.post(`/devices/${deviceCode}/unbind`);
   },
 };
 
-// ========== 用户 API ==========
+// ========== User API ==========
 export const userApi = {
-  /**
-   * 创建/更新用户信息
-   */
-  async upsertUser(data: RegisterFormData, tenantId: string): Promise<ApiResponse<{ user_id: string }>> {
-    const response = await apiClient.post('/users', {
-      ...data,
-      tenant_id: tenantId,
-    });
-    return response.data;
+  list: async (params?: {
+    page?: number;
+    page_size?: number;
+    search?: string;
+    constitution?: string;
+    stress_level?: string;
+  }): Promise<PaginatedResponse<User>> => {
+    return apiClient.get('/users', { params });
   },
 
-  /**
-   * 获取用户信息
-   */
-  async getUser(userId: string): Promise<ApiResponse<{ user: RegisterFormData & { id: string; bmi: number } }>> {
-    const response = await apiClient.get(`/users/${userId}`);
-    return response.data;
-  },
-};
-
-// ========== 测量 API ==========
-export const measurementApi = {
-  /**
-   * 开始测量
-   */
-  async startMeasurement(deviceCode: string, userId: string): Promise<ApiResponse<{ measurement_id: string }>> {
-    const response = await apiClient.post('/measurements/start', {
-      device_code: deviceCode,
-      user_id: userId,
-    });
-    return response.data;
+  get: async (userId: string): Promise<User> => {
+    return apiClient.get(`/users/${userId}`);
   },
 
-  /**
-   * 结束测量
-   */
-  async endMeasurement(measurementId: string): Promise<ApiResponse<{ status: string }>> {
-    const response = await apiClient.post(`/measurements/${measurementId}/end`);
-    return response.data;
+  create: async (data: Partial<User>): Promise<User> => {
+    return apiClient.post('/users', data);
   },
 
-  /**
-   * 获取测量状态
-   */
-  async getMeasurementStatus(measurementId: string): Promise<ApiResponse<{ status: string; duration: number }>> {
-    const response = await apiClient.get(`/measurements/${measurementId}/status`);
-    return response.data;
+  update: async (userId: string, data: Partial<User>): Promise<User> => {
+    return apiClient.put(`/users/${userId}`, data);
+  },
+
+  getTags: async (userId: string): Promise<string[]> => {
+    return apiClient.get(`/users/${userId}/tags`);
+  },
+
+  getReports: async (userId: string, params?: {
+    page?: number;
+    page_size?: number;
+  }): Promise<PaginatedResponse<MeasurementRecord>> => {
+    return apiClient.get(`/reports/user/${userId}`, { params });
   },
 };
 
-// ========== 实时数据 API ==========
-export const realtimeApi = {
-  /**
-   * 获取 SSE 流地址
-   */
-  getStreamUrl(deviceCode: string): string {
-    return `${API_BASE_URL}/realtime/${deviceCode}/stream`;
-  },
-
-  /**
-   * 创建 EventSource 连接
-   */
-  createEventSource(deviceCode: string): EventSource {
-    const url = this.getStreamUrl(deviceCode);
-    return new EventSource(url);
-  },
-
-  /**
-   * 获取最新数据
-   */
-  async getLatestData(deviceCode: string): Promise<ApiResponse<RealtimeData>> {
-    const response = await apiClient.get(`/realtime/${deviceCode}/latest`);
-    return response.data;
-  },
-};
-
-// ========== 报告 API ==========
+// ========== Report API ==========
 export const reportApi = {
-  /**
-   * 获取报告详情
-   */
-  async getReport(reportId: string): Promise<ApiResponse<MeasurementRecord>> {
-    const response = await apiClient.get(`/reports/${reportId}`);
-    return response.data;
+  get: async (reportId: string): Promise<MeasurementRecord> => {
+    return apiClient.get(`/reports/${reportId}`);
   },
 
-  /**
-   * 获取历史报告列表
-   */
-  async getReports(
-    userId: string,
-    page: number = 1,
-    pageSize: number = 10
-  ): Promise<ApiResponse<PaginatedResponse<MeasurementRecord>>> {
-    const response = await apiClient.get('/reports', {
-      params: {
-        user_id: userId,
-        page,
-        page_size: pageSize,
-      },
-    });
-    return response.data;
+  list: async (params?: {
+    page?: number;
+    page_size?: number;
+    user_id?: string;
+    device_code?: string;
+    start_date?: string;
+    end_date?: string;
+  }): Promise<PaginatedResponse<MeasurementRecord>> => {
+    return apiClient.get('/reports', { params });
   },
 
-  /**
-   * 触发 AI 报告生成
-   */
-  async generateAIReport(measurementId: string): Promise<ApiResponse<{ status: string }>> {
-    const response = await apiClient.post(`/reports/${measurementId}/generate-ai`);
-    return response.data;
+  regenerateAI: async (reportId: string): Promise<{ status: string }> => {
+    return apiClient.post(`/reports/${reportId}/regenerate`);
   },
 };
 
-// ========== 健康分析 API ==========
-export const analysisApi = {
-  /**
-   * 获取健康趋势
-   */
-  async getHealthTrend(userId: string, days: number = 7): Promise<
-    ApiResponse<{
-      dates: string[];
-      scores: number[];
-      stress_trend: number[];
-    }>
-  > {
-    const response = await apiClient.get('/analysis/trend', {
-      params: {
-        user_id: userId,
-        days,
-      },
-    });
-    return response.data;
+// ========== Realtime API ==========
+export const realtimeApi = {
+  getLatest: async (deviceCode: string): Promise<{
+    heart_rate: number;
+    breathing_rate: number;
+    stress_index: number;
+    timestamp: string;
+  }> => {
+    return apiClient.get(`/realtime/${deviceCode}/latest`);
   },
 
-  /**
-   * 获取健康洞察
-   */
-  async getInsights(userId: string): Promise<
-    ApiResponse<{
-      insights: Array<{ type: string; message: string; priority: number }>;
-    }>
-  > {
-    const response = await apiClient.get('/analysis/insights', {
-      params: { user_id: userId },
+  startMeasurement: async (deviceCode: string, userId: string): Promise<{
+    measurement_id: string;
+  }> => {
+    return apiClient.post(`/realtime/${deviceCode}/start`, { user_id: userId });
+  },
+
+  stopMeasurement: async (deviceCode: string): Promise<{ status: string }> => {
+    return apiClient.post(`/realtime/${deviceCode}/stop`);
+  },
+
+  getStatus: async (deviceCode: string): Promise<{
+    is_measuring: boolean;
+    duration: number;
+    user_id?: string;
+  }> => {
+    return apiClient.get(`/realtime/${deviceCode}/status`);
+  },
+
+  createStream: (deviceCode: string): EventSource => {
+    return new EventSource(`${API_BASE_URL}/realtime/${deviceCode}/stream`);
+  },
+};
+
+// ========== Intervention Rule API ==========
+export const ruleApi = {
+  list: async (): Promise<InterventionRule[]> => {
+    return apiClient.get('/rules');
+  },
+
+  get: async (ruleId: string): Promise<InterventionRule> => {
+    return apiClient.get(`/rules/${ruleId}`);
+  },
+
+  create: async (data: RuleFormData): Promise<InterventionRule> => {
+    return apiClient.post('/rules', data);
+  },
+
+  update: async (ruleId: string, data: Partial<RuleFormData>): Promise<InterventionRule> => {
+    return apiClient.put(`/rules/${ruleId}`, data);
+  },
+
+  delete: async (ruleId: string): Promise<{ success: boolean }> => {
+    return apiClient.delete(`/rules/${ruleId}`);
+  },
+
+  toggle: async (ruleId: string, enabled: boolean): Promise<InterventionRule> => {
+    return apiClient.patch(`/rules/${ruleId}/toggle`, { is_enabled: enabled });
+  },
+
+  getAvailableMetrics: async (): Promise<AvailableMetric[]> => {
+    return apiClient.get('/rules/available-metrics');
+  },
+
+  getAvailableActions: async (): Promise<AvailableAction[]> => {
+    return apiClient.get('/rules/available-actions');
+  },
+
+  test: async (ruleId: string, mockMetrics: Record<string, number>): Promise<{
+    triggered: boolean;
+    actions: Array<{ type: string; params: Record<string, unknown> }>;
+  }> => {
+    return apiClient.post(`/rules/${ruleId}/test`, mockMetrics);
+  },
+};
+
+// ========== Intervention Log API ==========
+export const interventionLogApi = {
+  list: async (params?: {
+    page?: number;
+    page_size?: number;
+    user_id?: string;
+    rule_id?: string;
+    status?: string;
+    start_date?: string;
+    end_date?: string;
+  }): Promise<PaginatedResponse<InterventionLog>> => {
+    return apiClient.get('/intervention-logs', { params });
+  },
+
+  get: async (logId: string): Promise<InterventionLog> => {
+    return apiClient.get(`/intervention-logs/${logId}`);
+  },
+};
+
+// ========== Intervention Effect API ==========
+export const interventionEffectApi = {
+  evaluate: async (userId: string, ruleId?: string): Promise<InterventionEffect> => {
+    return apiClient.get('/intervention-effect', {
+      params: { user_id: userId, rule_id: ruleId },
+    });
+  },
+};
+
+// ========== Activity API ==========
+export const activityApi = {
+  list: async (): Promise<Activity[]> => {
+    return apiClient.get('/activities');
+  },
+
+  get: async (activityId: string): Promise<Activity> => {
+    return apiClient.get(`/activities/${activityId}`);
+  },
+
+  create: async (data: ActivityFormData): Promise<Activity> => {
+    return apiClient.post('/activities', data);
+  },
+
+  update: async (activityId: string, data: Partial<ActivityFormData>): Promise<Activity> => {
+    return apiClient.put(`/activities/${activityId}`, data);
+  },
+
+  delete: async (activityId: string): Promise<{ success: boolean }> => {
+    return apiClient.delete(`/activities/${activityId}`);
+  },
+
+  matchUsers: async (activityId: string): Promise<{
+    matched: number;
+    users: ActivityPushRecord[];
+  }> => {
+    return apiClient.post(`/activities/${activityId}/match-users`);
+  },
+
+  push: async (activityId: string): Promise<{ pushed: number }> => {
+    return apiClient.post(`/activities/${activityId}/push`);
+  },
+
+  getPushRecords: async (activityId: string): Promise<ActivityPushRecord[]> => {
+    return apiClient.get(`/activities/${activityId}/push-records`);
+  },
+
+  exportCSV: async (activityId: string): Promise<Blob> => {
+    const response = await axios.get(`${API_BASE_URL}/activities/${activityId}/export`, {
+      params: { tenant_id: TENANT_ID },
+      responseType: 'blob',
     });
     return response.data;
   },
