@@ -1,0 +1,334 @@
+/**
+ * 全局样式 - 极简疗愈风格
+ * 设计原则：Minimalist Healing，通透感，呼吸感
+ */
+
+@import "tailwindcss";
+
+/* ========== CSS 变量定义 ========== */
+:root {
+  /* 全局背景 */
+  --bg-primary: #FAFBFD;
+  --bg-secondary: #F1F5F9;
+  
+  /* 毛玻璃卡片 */
+  --bg-card: rgba(255, 255, 255, 0.72);
+  --bg-card-blur: blur(20px);
+  --border-card: rgba(255, 255, 255, 0.8);
+  
+  /* 文字层级 */
+  --text-primary: #1A1D21;
+  --text-secondary: #6B7280;
+  --text-tertiary: #9CA3AF;
+  
+  /* 边框和分割线 */
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-light: rgba(0, 0, 0, 0.08);
+  
+  /* 情绪色彩 */
+  --emotion-relaxed: #4A90D9;
+  --emotion-calm: #50C878;
+  --emotion-focused: #F5A623;
+  --emotion-stressed: #E74C3C;
+  
+  /* 渐变色 */
+  --gradient-relaxed: linear-gradient(135deg, rgba(74, 144, 217, 0.2) 0%, rgba(100, 200, 232, 0.1) 100%);
+  --gradient-calm: linear-gradient(135deg, rgba(80, 200, 120, 0.2) 0%, rgba(56, 178, 172, 0.1) 100%);
+  --gradient-focused: linear-gradient(135deg, rgba(245, 166, 35, 0.2) 0%, rgba(251, 191, 36, 0.1) 100%);
+  --gradient-stressed: linear-gradient(135deg, rgba(231, 76, 60, 0.2) 0%, rgba(243, 146, 55, 0.1) 100%);
+  
+  /* 阴影 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-glow: 0 0 40px rgba(0, 0, 0, 0.08);
+  
+  /* 动画时间 */
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+  --duration-breathing: 8000ms;
+  
+  /* 圆角 */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+  
+  /* 安全区域 */
+  --safe-area-top: env(safe-area-inset-top);
+  --safe-area-bottom: env(safe-area-inset-bottom);
+}
+
+/* ========== 全局重置 ========== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: -apple-system, 'SF Pro Display', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ========== 字体层级 ========== */
+.font-hero {
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.font-title {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.font-body {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.font-caption {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.font-metric {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ========== 毛玻璃效果 ========== */
+.glass {
+  background: var(--bg-card);
+  backdrop-filter: var(--bg-card-blur);
+  -webkit-backdrop-filter: var(--bg-card-blur);
+  border: 1px solid var(--border-card);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+}
+
+/* ========== 情绪发光效果 ========== */
+.glow-relaxed {
+  box-shadow: 0 0 30px rgba(74, 144, 217, 0.3), 0 0 60px rgba(74, 144, 217, 0.1);
+}
+
+.glow-calm {
+  box-shadow: 0 0 30px rgba(80, 200, 120, 0.3), 0 0 60px rgba(80, 200, 120, 0.1);
+}
+
+.glow-focused {
+  box-shadow: 0 0 30px rgba(245, 166, 35, 0.3), 0 0 60px rgba(245, 166, 35, 0.1);
+}
+
+.glow-stressed {
+  box-shadow: 0 0 30px rgba(231, 76, 60, 0.3), 0 0 60px rgba(231, 76, 60, 0.1);
+}
+
+/* ========== 呼吸动画 ========== */
+@keyframes breathe {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+@keyframes breathe-slow {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.9;
+  }
+}
+
+.animate-breathe {
+  animation: breathe 8s ease-in-out infinite;
+}
+
+.animate-breathe-slow {
+  animation: breathe-slow 10s ease-in-out infinite;
+}
+
+/* ========== 脉冲动画 ========== */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+
+/* ========== 淡入动画 ========== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+/* ========== 渐变流动背景 ========== */
+@keyframes gradient-shift {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(10%, 5%);
+  }
+  50% {
+    transform: translate(5%, 10%);
+  }
+  75% {
+    transform: translate(-5%, 5%);
+  }
+}
+
+.animate-gradient {
+  animation: gradient-shift 30s ease-in-out infinite;
+}
+
+/* ========== 波形动画 ========== */
+@keyframes wave-flow {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* ========== 自定义滚动条 ========== */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* ========== 选择高亮 ========== */
+::selection {
+  background: rgba(74, 144, 217, 0.2);
+  color: inherit;
+}
+
+/* ========== 输入框样式重置 ========== */
+input, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* ========== 按钮重置 ========== */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* ========== 链接重置 ========== */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ========== 移动端适配 ========== */
+@media (max-width: 430px) {
+  html {
+    font-size: 14px;
+  }
+  
+  .font-hero {
+    font-size: 40px;
+  }
+  
+  .font-metric {
+    font-size: 24px;
+  }
+}
+
+/* ========== 安全区域适配 ========== */
+.safe-area-top {
+  padding-top: var(--safe-area-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: var(--safe-area-bottom);
+}
+
+/* ========== 工具类 ========== */
+.text-gradient {
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.transition-all-smooth {
+  transition: all var(--duration-normal) ease;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
